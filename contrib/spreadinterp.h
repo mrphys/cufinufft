@@ -37,7 +37,10 @@ struct SPREAD_OPTS {      // see cnufftspread:setup_spreader for defaults.
 		     ((x*M_1_2PI + (x<-PI ? 1.5 : (x>=PI ? -0.5 : 0.5)))*N) : \
 		     (x<0 ? x+N : (x>=N ? x-N : x)))
 // yuk! But this is *so* much faster than slow std::fmod that we stick to it.
+namespace cufinufft {
 FLT evaluate_kernel(FLT x, const SPREAD_OPTS &opts);
+} // namespace cufinufft
+
 int setup_spreader(SPREAD_OPTS &opts, FLT eps, FLT upsampfac, int kerevalmeth);
 
 #endif  // SPREADINTERP_H

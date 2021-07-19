@@ -9,8 +9,11 @@
 #include "../../include/utils.h"
 
 using namespace std;
+using namespace cufinufft;
 
 #define MAXBINSIZE 1024
+
+namespace cufinufft {
 
 static __forceinline__ __device__
 FLT evaluate_kernel(FLT x, FLT es_c, FLT es_beta, int ns)
@@ -23,6 +26,8 @@ FLT evaluate_kernel(FLT x, FLT es_c, FLT es_beta, int ns)
 {
 	return abs(x) < ns/2.0 ? exp(es_beta * (sqrt(1.0 - es_c*x*x))) : 0.0;
 }
+
+}	// namespace cufinufft
 
 static __inline__ __device__
 void eval_kernel_vec_Horner(FLT *ker, const FLT x, const int w, 

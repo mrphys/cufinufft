@@ -24,6 +24,8 @@ BIGINT next235beven(BIGINT n, BIGINT b)
 // ----------------------- helpers for timing (always stay double prec)...
 using namespace std;
 
+namespace cufinufft {
+  
 void CNTime::start()
 {
   gettimeofday(&initial, 0);
@@ -46,3 +48,5 @@ double CNTime::elapsedsec()
   double initialsec = (double)initial.tv_sec + 1e-6*initial.tv_usec;
   return nowsec - initialsec;
 }
+
+} // namespace cufinufft

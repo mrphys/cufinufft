@@ -44,6 +44,9 @@ BIGINT next235beven(BIGINT n, BIGINT b);
 
 // jfm timer class
 #include <sys/time.h>
+
+namespace cufinufft {
+
 class CNTime {
  public:
   void start();
@@ -52,6 +55,8 @@ class CNTime {
  private:
   struct timeval initial;
 };
+
+} // namespace cufinufft
 
 // allow compile-time switch off of openmp, so compilation without any openmp
 // is done (Note: _OPENMP is automatically set by -fopenmp compile flag)
