@@ -167,7 +167,8 @@ lib: $(STATICLIB) $(DYNAMICLIB)
 
 $(STATICLIB): $(CUFINUFFTOBJS) $(CUFINUFFTOBJS_64) $(CUFINUFFTOBJS_32) $(CONTRIBOBJS)
 	mkdir -p lib-static
-	ar rcs $(STATICLIB) $^
+	$(NVCC) -dlink $(NVCCFLAGS) $^ -o libcufinufft.dlink.o
+	ar rcs $(STATICLIB) $^ libcufinufft.dlink.o
 $(DYNAMICLIB): $(CUFINUFFTOBJS) $(CUFINUFFTOBJS_64) $(CUFINUFFTOBJS_32) $(CONTRIBOBJS)
 	mkdir -p lib
 	$(NVCC) -shared $(NVCCFLAGS) $^ -o $(DYNAMICLIB) $(LIBS)
