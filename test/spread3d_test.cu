@@ -15,7 +15,7 @@ int main(int argc, char* argv[])
 	int N1, N2, N3, M;
 	if (argc<6) {
 		fprintf(stderr,
-			"Usage: spread3d method nupts_distr nf1 nf2 nf3 [maxsubprobsize [M [tol [kerevalmeth [sort]]]]]\n"
+			"Usage: spread3d method nupts_distr nf1 nf2 nf3 [maxsubprobsize [M [tol [spread_kerevalmeth [sort]]]]]\n"
 			"Arguments:\n"
 			"  method: One of\n"
 			"    1: nupts driven,\n"
@@ -28,7 +28,7 @@ int main(int argc, char* argv[])
 			"  maxsubprobsize: Maximum size of subproblems (default 65536).\n"
 			"  M: The number of non-uniform points (default nf1 * nf2 * nf3 / 8).\n"
 			"  tol: NUFFT tolerance (default 1e-6).\n"
-			"  kerevalmeth: Kernel evaluation method; one of\n"
+			"  spread_kerevalmeth: Kernel evaluation method; one of\n"
 			"     0: Exponential of square root (default), or\n"
 			"     1: Horner evaluation.\n"
 			"  sort: One of\n"
@@ -63,9 +63,9 @@ int main(int argc, char* argv[])
 		sscanf(argv[8],"%lf",&w); tol  = (FLT)w;  // so can read 1e6 right!
 	}
 
-	int kerevalmeth=0;
+	int spread_kerevalmeth=0;
 	if(argc>9){
-		sscanf(argv[9],"%d",&kerevalmeth);
+		sscanf(argv[9],"%d",&spread_kerevalmeth);
 	}
 
 	int sort=1;
@@ -98,10 +98,10 @@ int main(int argc, char* argv[])
 
 	dplan->opts.gpu_method          =method;
 	dplan->opts.gpu_maxsubprobsize  =maxsubprobsize;
-	dplan->opts.gpu_kerevalmeth     =kerevalmeth;
+	dplan->opts.spread_kerevalmeth     =spread_kerevalmeth;
 	dplan->opts.gpu_sort            =sort;
-	dplan->opts.gpu_spreadinterponly=1;
-	ier = setup_spreader_for_nufft(dplan->spopts, tol, dplan->opts);
+	dplan->opts.spreadinterponly=1;
+	ier = setup_spreader_for_nufft(dplan->spopts, tol, dplan->opts, dim);
 
 	//binsize, obinsize need to be set here, since SETUP_BINSIZE() is not 
 	//called in spread, interp only wrappers.
@@ -189,7 +189,7 @@ int main(int argc, char* argv[])
 	for(int k=0; k<nf3; k++){
 		for(int j=0; j<nf2; j++){
 			for (int i=0; i<nf1; i++){
-				if( i % dplan.opts.gpu_binsizex == 0 && i!=0)
+				if( i % dplan->opts.gpu_binsizex == 0 && i!=0)
 					printf(" |");
 				printf(" (%2.3g,%2.3g)",fw[i+j*nf1+k*nf2*nf1].real(),
 					fw[i+j*nf1+k*nf2*nf1].imag() );

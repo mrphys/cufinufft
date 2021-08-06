@@ -121,9 +121,12 @@ This performs:
 	} else {    // or read from what's passed in
 	  d_plan->opts = *opts;    // keep a deep copy; changing *opts now has no effect
 	}
+	
+	// this must be set before calling "setup_spreader_for_nufft"
+	d_plan->spopts.spreadinterponly = d_plan->opts.spreadinterponly;
 
 	/* Setup Spreader */
-	ier = setup_spreader_for_nufft(d_plan->spopts,tol,d_plan->opts);
+	ier = setup_spreader_for_nufft(d_plan->spopts,tol,d_plan->opts,dim);
 	if (ier>1)                           // proceed if success or warning
 	  return ier;
 
@@ -134,14 +137,19 @@ This performs:
 
 	SETUP_BINSIZE(type, dim, &d_plan->opts);
 	BIGINT nf1=1, nf2=1, nf3=1;
-	SET_NF_TYPE12(d_plan->ms, d_plan->opts, d_plan->spopts, &nf1,
-				  d_plan->opts.gpu_obinsizex);
-	if(dim > 1)
-		SET_NF_TYPE12(d_plan->mt, d_plan->opts, d_plan->spopts, &nf2,
+	ier = SET_NF_TYPE12(d_plan->ms, d_plan->opts, d_plan->spopts, &nf1,
+				  		d_plan->opts.gpu_obinsizex);
+	if (ier > 0) return ier;
+	if(dim > 1) {
+		ier = SET_NF_TYPE12(d_plan->mt, d_plan->opts, d_plan->spopts, &nf2,
                       d_plan->opts.gpu_obinsizey);
-	if(dim > 2)
-		SET_NF_TYPE12(d_plan->mu, d_plan->opts, d_plan->spopts, &nf3,
+		if (ier > 0) return ier;
+	}
+	if(dim > 2) {
+		ier = SET_NF_TYPE12(d_plan->mu, d_plan->opts, d_plan->spopts, &nf3,
                       d_plan->opts.gpu_obinsizez);
+		if (ier > 0) return ier;
+	}
 	int fftsign = (iflag>=0) ? 1 : -1;
 
 	d_plan->nf1 = nf1;
@@ -161,16 +169,18 @@ This performs:
 	// this may move to gpu
 	cufinufft::CNTime timer; timer.start();
 	FLT *fwkerhalf1, *fwkerhalf2, *fwkerhalf3;
-
-	fwkerhalf1 = (FLT*)malloc(sizeof(FLT)*(nf1/2+1));
-	onedim_fseries_kernel(nf1, fwkerhalf1, d_plan->spopts);
-	if(dim > 1){
-		fwkerhalf2 = (FLT*)malloc(sizeof(FLT)*(nf2/2+1));
-		onedim_fseries_kernel(nf2, fwkerhalf2, d_plan->spopts);
-	}
-	if(dim > 2){
-		fwkerhalf3 = (FLT*)malloc(sizeof(FLT)*(nf3/2+1));
-		onedim_fseries_kernel(nf3, fwkerhalf3, d_plan->spopts);
+	if (!d_plan->opts.spreadinterponly) { // no need to do this if spread/interp only
+		
+		fwkerhalf1 = (FLT*)malloc(sizeof(FLT)*(nf1/2+1));
+		onedim_fseries_kernel(nf1, fwkerhalf1, d_plan->spopts);
+		if(dim > 1){
+			fwkerhalf2 = (FLT*)malloc(sizeof(FLT)*(nf2/2+1));
+			onedim_fseries_kernel(nf2, fwkerhalf2, d_plan->spopts);
+		}
+		if(dim > 2){
+			fwkerhalf3 = (FLT*)malloc(sizeof(FLT)*(nf3/2+1));
+			onedim_fseries_kernel(nf3, fwkerhalf3, d_plan->spopts);
+		}
 	}
 #ifdef TIME
 	printf("[time  ] \tkernel fser (ns=%d):\t %.3g s\n", d_plan->spopts.nspread,
@@ -203,16 +213,18 @@ This performs:
 	cudaEventElapsedTime(&milliseconds, start, stop);
 	printf("[time  ] \tAllocate GPU memory plan %.3g s\n", milliseconds/1000);
 #endif
-
 	cudaEventRecord(start);
-	checkCudaErrors(cudaMemcpy(d_plan->fwkerhalf1,fwkerhalf1,(nf1/2+1)*
-		sizeof(FLT),cudaMemcpyHostToDevice));
-	if(dim > 1)
-		checkCudaErrors(cudaMemcpy(d_plan->fwkerhalf2,fwkerhalf2,(nf2/2+1)*
+	if (!d_plan->opts.spreadinterponly)
+	{
+		checkCudaErrors(cudaMemcpy(d_plan->fwkerhalf1,fwkerhalf1,(nf1/2+1)*
 			sizeof(FLT),cudaMemcpyHostToDevice));
-	if(dim > 2)
-		checkCudaErrors(cudaMemcpy(d_plan->fwkerhalf3,fwkerhalf3,(nf3/2+1)*
-			sizeof(FLT),cudaMemcpyHostToDevice));
+		if(dim > 1)
+			checkCudaErrors(cudaMemcpy(d_plan->fwkerhalf2,fwkerhalf2,(nf2/2+1)*
+				sizeof(FLT),cudaMemcpyHostToDevice));
+		if(dim > 2)
+			checkCudaErrors(cudaMemcpy(d_plan->fwkerhalf3,fwkerhalf3,(nf3/2+1)*
+				sizeof(FLT),cudaMemcpyHostToDevice));
+	}
 #ifdef TIME
 	cudaEventRecord(stop);
 	cudaEventSynchronize(stop);
@@ -221,49 +233,53 @@ This performs:
 #endif
 
 	cudaEventRecord(start);
-	cufftHandle fftplan;
-	switch(d_plan->dim)
-	{
-		case 1:
+	if (!d_plan->opts.spreadinterponly) {
+		cufftHandle fftplan;
+		switch(d_plan->dim)
 		{
-			cerr<<"Not implemented yet"<<endl;
-		}
-		break;
-		case 2:
-		{
-			int n[] = {nf2, nf1};
-			int inembed[] = {nf2, nf1};
+			case 1:
+			{
+				cerr<<"Not implemented yet"<<endl;
+			}
+			break;
+			case 2:
+			{
+				int n[] = {nf2, nf1};
+				int inembed[] = {nf2, nf1};
 
-			//cufftCreate(&fftplan);
-			//cufftPlan2d(&fftplan,n[0],n[1],CUFFT_TYPE);
-			cufftPlanMany(&fftplan,dim,n,inembed,1,inembed[0]*inembed[1],
-				inembed,1,inembed[0]*inembed[1],CUFFT_TYPE,maxbatchsize);
+				//cufftCreate(&fftplan);
+				//cufftPlan2d(&fftplan,n[0],n[1],CUFFT_TYPE);
+				cufftPlanMany(&fftplan,dim,n,inembed,1,inembed[0]*inembed[1],
+					inembed,1,inembed[0]*inembed[1],CUFFT_TYPE,maxbatchsize);
+			}
+			break;
+			case 3:
+			{
+				int dim = 3;
+				int n[] = {nf3, nf2, nf1};
+				int inembed[] = {nf3, nf2, nf1};
+				int istride = 1;
+				cufftPlanMany(&fftplan,dim,n,inembed,istride,inembed[0]*inembed[1]*
+					inembed[2],inembed,istride,inembed[0]*inembed[1]*inembed[2],
+					CUFFT_TYPE,maxbatchsize);
+			}
+			break;
 		}
-		break;
-		case 3:
-		{
-			int dim = 3;
-			int n[] = {nf3, nf2, nf1};
-			int inembed[] = {nf3, nf2, nf1};
-			int istride = 1;
-			cufftPlanMany(&fftplan,dim,n,inembed,istride,inembed[0]*inembed[1]*
-				inembed[2],inembed,istride,inembed[0]*inembed[1]*inembed[2],
-				CUFFT_TYPE,maxbatchsize);
-		}
-		break;
+		d_plan->fftplan = fftplan;
 	}
-	d_plan->fftplan = fftplan;
 #ifdef TIME
 	cudaEventRecord(stop);
 	cudaEventSynchronize(stop);
 	cudaEventElapsedTime(&milliseconds, start, stop);
 	printf("[time  ] \tCUFFT Plan\t\t %.3g s\n", milliseconds/1000);
 #endif
-	free(fwkerhalf1);
-	if(dim > 1)
-		free(fwkerhalf2);
-	if(dim > 2)
-		free(fwkerhalf3);
+	if (!d_plan->opts.spreadinterponly) {
+		free(fwkerhalf1);
+		if(dim > 1)
+			free(fwkerhalf2);
+		if(dim > 2)
+			free(fwkerhalf3);
+	}
 
         // Multi-GPU support: reset the device ID
         cudaSetDevice(orig_gpu_device_id);
@@ -503,7 +519,7 @@ int CUFINUFFT_EXECUTE(CUCPX* d_c, CUCPX* d_fk, CUFINUFFT_PLAN d_plan)
 		case 1:
 		{
 			cerr<<"Not Implemented yet"<<endl;
-			ier = 1;
+			ier = ERR_NOTIMPLEMENTED;
 		}
 		break;
 		case 2:
@@ -514,7 +530,7 @@ int CUFINUFFT_EXECUTE(CUCPX* d_c, CUCPX* d_fk, CUFINUFFT_PLAN d_plan)
 				ier = CUFINUFFT2D2_EXEC(d_c,  d_fk, d_plan);
 			if(type == 3){
 				cerr<<"Not Implemented yet"<<endl;
-				ier = 1;
+				ier = ERR_NOTIMPLEMENTED;
 			}
 		}
 		break;
@@ -526,7 +542,7 @@ int CUFINUFFT_EXECUTE(CUCPX* d_c, CUCPX* d_fk, CUFINUFFT_PLAN d_plan)
 				ier = CUFINUFFT3D2_EXEC(d_c,  d_fk, d_plan);
 			if(type == 3){
 				cerr<<"Not Implemented yet"<<endl;
-				ier = 1;
+				ier = ERR_NOTIMPLEMENTED;
 			}
 		}
 		break;
@@ -534,6 +550,64 @@ int CUFINUFFT_EXECUTE(CUCPX* d_c, CUCPX* d_fk, CUFINUFFT_PLAN d_plan)
 
         // Multi-GPU support: reset the device ID
         cudaSetDevice(orig_gpu_device_id);
+
+	return ier;
+}
+
+int CUFINUFFT_INTERP(CUCPX* d_c, CUCPX* d_fk, CUFINUFFT_PLAN d_plan)
+{
+	// Mult-GPU support: set the CUDA Device ID:
+	int orig_gpu_device_id;
+	cudaGetDevice(& orig_gpu_device_id);
+	cudaSetDevice(d_plan->opts.gpu_device_id);
+
+	int ier;
+
+	switch(d_plan->dim)
+	{
+		case 1:
+			cerr<<"Not Implemented yet"<<endl;
+			ier = ERR_NOTIMPLEMENTED;
+			break;
+		case 2:
+			ier = CUFINUFFT2D_INTERP(d_c,  d_fk, d_plan);
+			break;
+		case 3:
+			ier = CUFINUFFT3D_INTERP(d_c,  d_fk, d_plan);
+			break;
+	}
+
+	// Multi-GPU support: reset the device ID
+	cudaSetDevice(orig_gpu_device_id);
+
+	return ier;
+}
+
+int CUFINUFFT_SPREAD(CUCPX* d_c, CUCPX* d_fk, CUFINUFFT_PLAN d_plan)
+{
+	// Mult-GPU support: set the CUDA Device ID:
+	int orig_gpu_device_id;
+	cudaGetDevice(& orig_gpu_device_id);
+	cudaSetDevice(d_plan->opts.gpu_device_id);
+
+	int ier;
+
+	switch(d_plan->dim)
+	{
+		case 1:
+			cerr<<"Not Implemented yet"<<endl;
+			ier = ERR_NOTIMPLEMENTED;
+			break;
+		case 2:
+			ier = CUFINUFFT2D_SPREAD(d_c,  d_fk, d_plan);
+			break;
+		case 3:
+			ier = CUFINUFFT3D_SPREAD(d_c,  d_fk, d_plan);
+			break;
+	}
+
+	// Multi-GPU support: reset the device ID
+	cudaSetDevice(orig_gpu_device_id);
 
 	return ier;
 }
@@ -628,7 +702,7 @@ int CUFINUFFT_DEFAULT_OPTS(int type, int dim, cufinufft_opts *opts)
 
 	/* following options are for gpu */
 	opts->gpu_nstreams = 0;
-	opts->gpu_kerevalmeth = 0; // using exp(sqrt())
+	opts->spread_kerevalmeth = 0; // using exp(sqrt())
 	opts->gpu_sort = 1; // access nupts in an ordered way for nupts driven method
 
 	opts->gpu_maxsubprobsize = 1024;
@@ -640,14 +714,14 @@ int CUFINUFFT_DEFAULT_OPTS(int type, int dim, cufinufft_opts *opts)
 	opts->gpu_binsizey = -1;
 	opts->gpu_binsizez = -1;
 
-	opts->gpu_spreadinterponly = 0; // default to do the whole nufft
+	opts->spreadinterponly = 0; // default to do the whole nufft
 
 	switch(dim)
 	{
 		case 1:
 		{
 			cerr<<"Not Implemented yet"<<endl;
-			ier = 1;
+			ier = ERR_NOTIMPLEMENTED;
 			return ier;
 		}
 		case 2:
@@ -660,7 +734,7 @@ int CUFINUFFT_DEFAULT_OPTS(int type, int dim, cufinufft_opts *opts)
 			}
 			if(type == 3){
 				cerr<<"Not Implemented yet"<<endl;
-				ier = 1;
+				ier = ERR_NOTIMPLEMENTED;
 				return ier;
 			}
 		}
@@ -675,7 +749,7 @@ int CUFINUFFT_DEFAULT_OPTS(int type, int dim, cufinufft_opts *opts)
 			}
 			if(type == 3){
 				cerr<<"Not Implemented yet"<<endl;
-				ier = 1;
+				ier = ERR_NOTIMPLEMENTED;
 				return ier;
 			}
 		}

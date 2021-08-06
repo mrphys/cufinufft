@@ -15,7 +15,7 @@ int main(int argc, char* argv[])
 	int N1, N2, M;
 	if (argc<5) {
 		fprintf(stderr,
-			"Usage: interp2d method nupts_distr nf1 nf2 [M [tol [kerevalmeth [sort]]]]\n"
+			"Usage: interp2d method nupts_distr nf1 nf2 [M [tol [spread_kerevalmeth [sort]]]]\n"
 			"Arguments:\n"
 			"  method: One of\n"
 			"    1: nupts driven, or\n"
@@ -26,7 +26,7 @@ int main(int argc, char* argv[])
 			"  nf1, nf2: The size of the 2D array.\n"
 			"  M: The number of non-uniform points (default nf1 * nf2 / 4).\n"
 			"  tol: NUFFT tolerance (default 1e-6).\n"
-			"  kerevalmeth: Kernel evaluation method; one of\n"
+			"  spread_kerevalmeth: Kernel evaluation method; one of\n"
 			"     0: Exponential of square root (default), or\n"
 			"     1: Horner evaluation.\n"
 			"  sort: One of\n"
@@ -55,9 +55,9 @@ int main(int argc, char* argv[])
 		sscanf(argv[6],"%lf",&w); tol  = (FLT)w;  // so can read 1e6 right!
 	}
 
-	int kerevalmeth=0;
+	int spread_kerevalmeth=0;
 	if(argc>7){
-		sscanf(argv[7],"%d",&kerevalmeth);
+		sscanf(argv[7],"%d",&spread_kerevalmeth);
 	}
 
 	int sort=1;
@@ -89,14 +89,14 @@ int main(int argc, char* argv[])
 	ier = CUFINUFFT_DEFAULT_OPTS(2, dim, &(dplan->opts));
 	dplan->opts.gpu_method           = method;
 	dplan->opts.gpu_maxsubprobsize   = 1024;
-	dplan->opts.gpu_kerevalmeth      = kerevalmeth;
+	dplan->opts.spread_kerevalmeth      = spread_kerevalmeth;
 	dplan->opts.gpu_sort             = sort;
-	dplan->opts.gpu_spreadinterponly = 1;
+	dplan->opts.spreadinterponly = 1;
 	dplan->opts.gpu_binsizex         = 32; //binsize needs to be set here, since
                                            //SETUP_BINSIZE() is not called in 
                                            //spread, interp only wrappers.
 	dplan->opts.gpu_binsizey         = 32;
-	ier = setup_spreader_for_nufft(dplan->spopts, tol, dplan->opts);
+	ier = setup_spreader_for_nufft(dplan->spopts, tol, dplan->opts, dim);
 
 	switch(nupts_distribute){
 		case 0: //uniform

@@ -89,9 +89,9 @@ int main(int argc, char* argv[])
 	ier = CUFINUFFT_DEFAULT_OPTS(2, dim, &(dplan->opts));
 	dplan->opts.gpu_method           = method;
 	dplan->opts.gpu_maxsubprobsize   = 1024;
-	dplan->opts.gpu_kerevalmeth      = 0;      // not in cmd-line args
+	dplan->opts.spread_kerevalmeth      = 0;      // not in cmd-line args
 	dplan->opts.gpu_sort             = sort;
-	dplan->opts.gpu_spreadinterponly = 1;
+	dplan->opts.spreadinterponly = 1;
 
 	//binsize needs to be set here, since SETUP_BINSIZE() is not called in spread, 
 	//interp only wrappers.
@@ -107,7 +107,7 @@ int main(int argc, char* argv[])
 		dplan->opts.gpu_binsizey=16;
 		dplan->opts.gpu_binsizez=2;
 	}
-	ier = setup_spreader_for_nufft(dplan->spopts, tol, dplan->opts);
+	ier = setup_spreader_for_nufft(dplan->spopts, tol, dplan->opts, dim);
 
 	switch(nupts_distribute){
 		// Making data

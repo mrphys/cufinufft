@@ -14,8 +14,9 @@
 struct cufinufft_opts;
 
 // common.cpp provides...
-int setup_spreader_for_nufft(SPREAD_OPTS &spopts, FLT eps, cufinufft_opts opts);
-void SET_NF_TYPE12(BIGINT ms, cufinufft_opts opts, SPREAD_OPTS spopts,BIGINT *nf,
-                   BIGINT b);
+int setup_spreader_for_nufft(SPREAD_OPTS &spopts, FLT eps, cufinufft_opts opts,
+                             int dim);
+int SET_NF_TYPE12(BIGINT ms, cufinufft_opts opts, SPREAD_OPTS spopts,BIGINT *nf,
+                  BIGINT b);
 void onedim_fseries_kernel(BIGINT nf, FLT *fwkerhalf, SPREAD_OPTS opts);
 #endif  // COMMON_H

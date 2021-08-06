@@ -359,7 +359,7 @@ int CUSPREAD2D_NUPTSDRIVEN(int nf1, int nf2, int M, CUFINUFFT_PLAN d_plan,
 	blocks.x = (M + threadsPerBlock.x - 1)/threadsPerBlock.x;
 	blocks.y = 1;
 	cudaEventRecord(start);
-	if(d_plan->opts.gpu_kerevalmeth){
+	if(d_plan->opts.spread_kerevalmeth){
 		for(int t=0; t<blksize; t++){
 			Spread_2d_NUptsdriven_Horner<<<blocks, threadsPerBlock>>>(d_kx,
 				d_ky, d_c+t*M, d_fw+t*nf1*nf2, M, ns, nf1, nf2, sigma,
@@ -379,7 +379,7 @@ int CUSPREAD2D_NUPTSDRIVEN(int nf1, int nf2, int M, CUFINUFFT_PLAN d_plan,
 	cudaEventSynchronize(stop);
 	cudaEventElapsedTime(&milliseconds, start, stop);
 	printf("[time  ] \tKernel Spread_2d_NUptsdriven (%d)\t%.3g ms\n",
-		milliseconds, d_plan->opts.gpu_kerevalmeth);
+		milliseconds, d_plan->opts.spread_kerevalmeth);
 #endif
 	return 0;
 }
@@ -663,7 +663,7 @@ int CUSPREAD2D_SUBPROB(int nf1, int nf2, int M, CUFINUFFT_PLAN d_plan,
 		return 1;
 	}
 
-	if(d_plan->opts.gpu_kerevalmeth){
+	if(d_plan->opts.spread_kerevalmeth){
 		for(int t=0; t<blksize; t++){
 			Spread_2d_Subprob_Horner<<<totalnumsubprob, 256,
 				sharedplanorysize>>>(d_kx, d_ky, d_c+t*M, d_fw+t*nf1*nf2, M,
@@ -688,7 +688,7 @@ int CUSPREAD2D_SUBPROB(int nf1, int nf2, int M, CUFINUFFT_PLAN d_plan,
 	cudaEventSynchronize(stop);
 	cudaEventElapsedTime(&milliseconds, start, stop);
 	printf("[time  ] \tKernel Spread_2d_Subprob (%d)\t\t%.3g ms\n",
-		milliseconds, d_plan->opts.gpu_kerevalmeth);
+		milliseconds, d_plan->opts.spread_kerevalmeth);
 #endif
 	return 0;
 }

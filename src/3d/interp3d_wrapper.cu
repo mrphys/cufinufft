@@ -179,7 +179,7 @@ int CUINTERP3D_NUPTSDRIVEN(int nf1, int nf2, int nf3, int M, CUFINUFFT_PLAN d_pl
 	blocks.y = 1;
 
 	cudaEventRecord(start);
-	if(d_plan->opts.gpu_kerevalmeth){
+	if(d_plan->opts.spread_kerevalmeth){
 		for(int t=0; t<blksize; t++){
 			Interp_3d_NUptsdriven_Horner<<<blocks, threadsPerBlock, 0, 
 				0>>>(d_kx, d_ky, d_kz, d_c+t*M, 
@@ -199,7 +199,7 @@ int CUINTERP3D_NUPTSDRIVEN(int nf1, int nf2, int nf3, int M, CUFINUFFT_PLAN d_pl
 	cudaEventSynchronize(stop);
 	cudaEventElapsedTime(&milliseconds, start, stop);
 	printf("[time  ] \tKernel Interp_3d_NUptsdriven (%d) \t%.3g ms\n", 
-		milliseconds, d_plan->opts.gpu_kerevalmeth);
+		milliseconds, d_plan->opts.spread_kerevalmeth);
 #endif
 	return 0;
 }
@@ -256,7 +256,7 @@ int CUINTERP3D_SUBPROB(int nf1, int nf2, int nf3, int M, CUFINUFFT_PLAN d_plan,
 	}
 
 	for(int t=0; t<blksize; t++){
-		if(d_plan->opts.gpu_kerevalmeth==1){
+		if(d_plan->opts.spread_kerevalmeth==1){
 			Interp_3d_Subprob_Horner<<<totalnumsubprob, 256,
 				sharedplanorysize>>>(d_kx, d_ky, d_kz, d_c+t*M, d_fw+t*nf1*nf2*nf3, 
 				M, ns, nf1, nf2, nf3, sigma, d_binstartpts, d_binsize, bin_size_x,
@@ -278,7 +278,7 @@ int CUINTERP3D_SUBPROB(int nf1, int nf2, int nf3, int M, CUFINUFFT_PLAN d_plan,
 	cudaEventSynchronize(stop);
 	cudaEventElapsedTime(&milliseconds, start, stop);
 	printf("[time  ] \tKernel Interp_3d_Subprob (%d) \t%.3g ms\n", milliseconds,
-	d_plan->opts.gpu_kerevalmeth);
+	d_plan->opts.spread_kerevalmeth);
 #endif
 	return 0;
 }

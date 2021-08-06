@@ -4,6 +4,9 @@
 #include <helper_cuda.h>
 #include <complex>
 #include <cufft.h>
+#include <thrust/device_ptr.h>
+#include <thrust/functional.h>
+#include <thrust/transform.h>
 
 #include <cufinufft_eitherprec.h>
 #include "../cuspreadinterp.h"
@@ -164,3 +167,81 @@ int CUFINUFFT2D2_EXEC(CUCPX* d_c, CUCPX* d_fk, CUFINUFFT_PLAN d_plan)
 	return ier;
 }
 
+int CUFINUFFT2D_INTERP(CUCPX* d_c, CUCPX* d_fk, CUFINUFFT_PLAN d_plan)
+{
+	assert(d_plan->spopts.spread_direction == 2);
+
+	cudaEvent_t start, stop;
+	cudaEventCreate(&start);
+	cudaEventCreate(&stop);
+
+	cudaEventRecord(start);
+	int blksize;
+	int ier;
+	int gridsize = d_plan->ms*d_plan->mt;
+	CUCPX* d_fkstart;
+	CUCPX* d_cstart;
+	
+	for(int i=0; i*d_plan->maxbatchsize < d_plan->ntransf; i++){
+		blksize = min(d_plan->ntransf - i*d_plan->maxbatchsize, 
+			d_plan->maxbatchsize);
+		d_cstart  = d_c  + i*d_plan->maxbatchsize*d_plan->M;
+		d_fkstart = d_fk + i*d_plan->maxbatchsize*gridsize;
+
+		d_plan->c = d_cstart;
+		d_plan->fw = d_fkstart;
+
+		cudaEventRecord(start);
+		ier = CUINTERP2D(d_plan, blksize);
+		if(ier != 0 ){
+			printf("error: cuinterp2d, method(%d)\n", d_plan->opts.gpu_method);
+			return ier;
+		}
+	}
+	
+	using namespace thrust::placeholders;
+	thrust::device_ptr<FLT> dev_ptr((FLT*) d_c);
+	thrust::transform(dev_ptr, dev_ptr + 2*d_plan->ntransf*d_plan->M,
+					  dev_ptr, _1 * (FLT) d_plan->spopts.ES_scale); 
+	
+	return ier;
+}
+
+int CUFINUFFT2D_SPREAD(CUCPX* d_c, CUCPX* d_fk, CUFINUFFT_PLAN d_plan)
+{
+	assert(d_plan->spopts.spread_direction == 1);
+	cudaEvent_t start, stop;
+	cudaEventCreate(&start);
+	cudaEventCreate(&stop);
+
+	cudaEventRecord(start);
+	int blksize;
+	int ier;
+	int gridsize = d_plan->ms*d_plan->mt;
+	CUCPX* d_fkstart;
+	CUCPX* d_cstart;
+
+	for(int i=0; i*d_plan->maxbatchsize < d_plan->ntransf; i++){
+		blksize = min(d_plan->ntransf - i*d_plan->maxbatchsize, 
+			d_plan->maxbatchsize);
+		d_cstart   = d_c + i*d_plan->maxbatchsize*d_plan->M;
+		d_fkstart  = d_fk + i*d_plan->maxbatchsize*gridsize;
+		
+		d_plan->c  = d_cstart;
+		d_plan->fw = d_fkstart;
+
+		cudaEventRecord(start);
+		ier = CUSPREAD2D(d_plan,blksize);
+		if(ier != 0 ){
+			printf("error: cuspread2d, method(%d)\n", d_plan->opts.gpu_method);
+			return ier;
+		}
+	}
+
+	using namespace thrust::placeholders;
+	thrust::device_ptr<FLT> dev_ptr((FLT*) d_fk);
+	thrust::transform(dev_ptr, dev_ptr + 2*d_plan->ntransf*gridsize,
+					  dev_ptr, _1 * (FLT) d_plan->spopts.ES_scale); 
+
+	return ier;
+}

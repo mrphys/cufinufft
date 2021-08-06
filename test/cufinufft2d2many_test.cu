@@ -121,7 +121,7 @@ int main(int argc, char* argv[])
 	int dim = 2;
 	int type = 2;
 
-	// Here we setup our own opts, for gpu_method and gpu_kerevalmeth
+	// Here we setup our own opts, for gpu_method and spread_kerevalmeth
 	cufinufft_opts opts;
 	ier=CUFINUFFT_DEFAULT_OPTS(type, dim, &opts);
 	if(ier!=0){
@@ -129,7 +129,7 @@ int main(int argc, char* argv[])
 	  return ier;
 	}
 	opts.gpu_method=method;
-	opts.gpu_kerevalmeth=1;
+	opts.spread_kerevalmeth=1;
 
 	int nmodes[3];
 	nmodes[0] = N1;

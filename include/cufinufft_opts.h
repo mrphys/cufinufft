@@ -17,9 +17,11 @@ typedef struct cufinufft_opts {   // see cufinufft_default_opts() for defaults
 
 	int gpu_maxsubprobsize;
 	int gpu_nstreams;
-	int gpu_kerevalmeth; // 0: direct exp(sqrt()), 1: Horner ppval
+	int spread_kerevalmeth; // 0: direct exp(sqrt()), 1: Horner ppval
 
-	int gpu_spreadinterponly; // 0: NUFFT, 1: spread or interpolation only
+	int spreadinterponly; 	// 0: NUFFT, 1: spread or interpolation only
+	int debug; 				// currently not used. added for consistency with
+							// CPU version of FINUFFT (Montalt 8/6/2021)
 
 	/* multi-gpu support */
 	int gpu_device_id;

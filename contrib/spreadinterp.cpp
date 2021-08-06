@@ -3,7 +3,33 @@
 #include <vector>
 #include <math.h>
 
-int setup_spreader(SPREAD_OPTS &opts,FLT eps, FLT upsampfac, int kerevalmeth)
+FLT calculate_scale_factor(SPREAD_OPTS &opts, int dim, FLT dummy = 0.0) {
+  // Calculates the scaling factor for spread/interp only.
+  // Dummy param is used to trigger float/double overloading and avoid
+  // redefinition errors.
+  // This evaluates the integral of the kernel numerically via the trapezoidal
+  // rule.
+  BIGINT n = 100;
+  FLT h = 2.0 / n;
+  FLT x = -1.0;
+  FLT sum = 0.0;
+  for(BIGINT i = 1; i < n; i++) {
+    x += h;
+    sum += exp(opts.ES_beta * sqrt(1.0 - x * x));
+  }
+  sum += 1.0;
+  sum *= h;
+  // Note that 'c' is not included in the formula above. That seems to result
+  // in incorrect results. Instead, applying this correction seems to work. 
+  sum *= sqrt(1.0 / opts.ES_c);
+  FLT scale = sum;
+  if (dim > 1) { scale *= sum; }
+  if (dim > 2) { scale *= sum; }
+  return 1.0 / scale;
+}
+
+int setup_spreader(SPREAD_OPTS &opts,FLT eps, FLT upsampfac,
+                   int spread_kerevalmeth, int dim)
 // Initializes spreader kernel parameters given desired NUFFT tolerance eps,
 // upsampling factor (=sigma in paper, or R in Dutt-Rokhlin), and ker eval meth
 // (etiher 0:exp(sqrt()), 1: Horner ppval).
@@ -12,8 +38,8 @@ int setup_spreader(SPREAD_OPTS &opts,FLT eps, FLT upsampfac, int kerevalmeth)
 // Returns: 0 success, 1, warning, >1 failure (see error codes in utils.h)
 {
   if (upsampfac!=2.0) {   // nonstandard sigma
-    if (kerevalmeth==1) {
-      fprintf(stderr,"setup_spreader: nonstandard upsampfac=%.3g cannot be handled by kerevalmeth=1\n",(double)upsampfac);
+    if (spread_kerevalmeth==1) {
+      fprintf(stderr,"setup_spreader: nonstandard upsampfac=%.3g cannot be handled by spread_kerevalmeth=1\n",(double)upsampfac);
       return HORNER_WRONG_BETA;
     }
     if (upsampfac<=1.0) {
@@ -62,6 +88,8 @@ int setup_spreader(SPREAD_OPTS &opts,FLT eps, FLT upsampfac, int kerevalmeth)
     betaoverns = gamma*PI*(1-1/(2*upsampfac));  // formula based on cutoff
   }
   opts.ES_beta = betaoverns * (FLT)ns;    // set the kernel beta parameter
+  if (opts.spreadinterponly)
+    opts.ES_scale = calculate_scale_factor(opts, dim);
   //fprintf(stderr,"setup_spreader: sigma=%.6f, chose ns=%d beta=%.6f\n",(double)upsampfac,ns,(double)opts.ES_beta); // user hasn't set debug yet
   return ier;
 }

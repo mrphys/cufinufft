@@ -34,7 +34,7 @@ int CUFINUFFT_SPREAD3D(int nf1, int nf2, int nf3,
 	d_plan->kz = d_kz;
 	d_plan->c  = d_c;
 	d_plan->fw = d_fw;
-	//ier = setup_spreader_for_nufft(d_plan->spopts, eps, d_plan->opts);
+	//ier = setup_spreader_for_nufft(d_plan->spopts, eps, d_plan->opts, dim);
 	d_plan->nf1 = nf1;
 	d_plan->nf2 = nf2;
 	d_plan->nf3 = nf3;
@@ -366,7 +366,7 @@ int CUSPREAD3D_NUPTSDRIVEN(int nf1, int nf2, int nf3, int M,
 	blocks.x = (M + threadsPerBlock.x - 1)/threadsPerBlock.x;
 	blocks.y = 1;
 	cudaEventRecord(start);
-	if(d_plan->opts.gpu_kerevalmeth==1){
+	if(d_plan->opts.spread_kerevalmeth==1){
 		for(int t=0; t<blksize; t++){
 			Spread_3d_NUptsdriven_Horner<<<blocks, threadsPerBlock>>>(d_kx, d_ky, 
 				d_kz, d_c+t*M, d_fw+t*nf1*nf2*nf3, M, ns, nf1, nf2, nf3, sigma, 
@@ -385,7 +385,7 @@ int CUSPREAD3D_NUPTSDRIVEN(int nf1, int nf2, int nf3, int M,
 	cudaEventSynchronize(stop);
 	cudaEventElapsedTime(&milliseconds, start, stop);
 	printf("[time  ] \tKernel Spread_3d_NUptsdriven (%d)\t%.3g ms\n", 
-		milliseconds,d_plan->opts.gpu_kerevalmeth);
+		milliseconds,d_plan->opts.spread_kerevalmeth);
 #endif
 	return 0;
 }
@@ -847,7 +847,7 @@ int CUSPREAD3D_BLOCKGATHER(int nf1, int nf2, int nf3, int M,
 
 	cudaEventRecord(start);
 	for(int t=0; t<blksize; t++){
-		if(d_plan->opts.gpu_kerevalmeth == 1){
+		if(d_plan->opts.spread_kerevalmeth == 1){
 			size_t sharedplanorysize = obin_size_x*obin_size_y*obin_size_z
 				*sizeof(CUCPX);
 			if(sharedplanorysize > 49152){
@@ -883,7 +883,7 @@ int CUSPREAD3D_BLOCKGATHER(int nf1, int nf2, int nf3, int M,
 			cudaEventSynchronize(stop);
 			cudaEventElapsedTime(&milliseconds, start, stop);
 			printf("[time  ] \tKernel Spread_3d_BlockGather (%d)\t%.3g ms\n",
-				milliseconds, d_plan->opts.gpu_kerevalmeth);
+				milliseconds, d_plan->opts.spread_kerevalmeth);
 #endif
 	return 0;
 }
@@ -1186,7 +1186,7 @@ int CUSPREAD3D_SUBPROB(int nf1, int nf2, int nf3, int M, CUFINUFFT_PLAN d_plan,
 	}
 
 	for(int t=0; t<blksize; t++){
-		if(d_plan->opts.gpu_kerevalmeth){
+		if(d_plan->opts.spread_kerevalmeth){
 			Spread_3d_Subprob_Horner<<<totalnumsubprob, 256,
 				sharedplanorysize>>>(d_kx, d_ky, d_kz, d_c+t*M, d_fw+t*nf1*nf2*nf3, 
 				M, ns, nf1, nf2, nf3, sigma, d_binstartpts, d_binsize, bin_size_x,
@@ -1208,7 +1208,7 @@ int CUSPREAD3D_SUBPROB(int nf1, int nf2, int nf3, int M, CUFINUFFT_PLAN d_plan,
 	cudaEventSynchronize(stop);
 	cudaEventElapsedTime(&milliseconds, start, stop);
 	printf("[time  ] \tKernel Spread_3d_Subprob (%d) \t%.3g ms\n", milliseconds, 
-		d_plan->opts.gpu_kerevalmeth);
+		d_plan->opts.spread_kerevalmeth);
 #endif
 	return 0;
 }
