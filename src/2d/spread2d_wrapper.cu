@@ -213,6 +213,10 @@ int CUSPREAD2D_NUPTSDRIVEN_PROP(int nf1, int nf2, int M, CUFINUFFT_PLAN d_plan)
 
 		int pirange = d_plan->spopts.pirange;
 
+		// Synchronize device before we start. This is essential! Otherwise the
+		// next kernel could read the wrong (kx, ky, kz) values.
+		checkCudaErrors(cudaDeviceSynchronize());
+
 		cudaEventRecord(start);
 		checkCudaErrors(cudaMemset(d_binsize,0,numbins[0]*numbins[1]*
 			sizeof(int)));
@@ -437,6 +441,10 @@ int CUSPREAD2D_SUBPROB_PROP(int nf1, int nf2, int M, CUFINUFFT_PLAN d_plan)
 	int *d_subprob_to_bin = NULL;
 
 	int pirange=d_plan->spopts.pirange;
+
+	// Synchronize device before we start. This is essential! Otherwise the
+	// next kernel could read the wrong (kx, ky, kz) values.
+	checkCudaErrors(cudaDeviceSynchronize());
 
 	cudaEventRecord(start);
 	checkCudaErrors(cudaMemset(d_binsize,0,numbins[0]*numbins[1]*sizeof(int)));

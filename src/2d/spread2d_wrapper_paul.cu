@@ -55,6 +55,10 @@ int CUSPREAD2D_PAUL_PROP(int nf1, int nf2, int M, CUFINUFFT_PLAN d_plan)
 
 	int pirange=d_plan->spopts.pirange;
 
+	// Synchronize device before we start. This is essential! Otherwise the
+	// next kernel could read the wrong (kx, ky, kz) values.
+	checkCudaErrors(cudaDeviceSynchronize());
+
 	void *d_temp_storage = NULL;
 
 	cudaEventRecord(start);

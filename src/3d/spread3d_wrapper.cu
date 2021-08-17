@@ -220,6 +220,10 @@ int CUSPREAD3D_NUPTSDRIVEN_PROP(int nf1, int nf2, int nf3, int M,
 
 		int pirange = d_plan->spopts.pirange;
 
+		// Synchronize device before we start. This is essential! Otherwise the
+		// next kernel could read the wrong (kx, ky, kz) values.
+		checkCudaErrors(cudaDeviceSynchronize());
+
 		cudaEventRecord(start);
 		checkCudaErrors(cudaMemset(d_binsize,0,numbins[0]*numbins[1]*numbins[2]*
 			sizeof(int)));
@@ -485,6 +489,10 @@ int CUSPREAD3D_BLOCKGATHER_PROP(int nf1, int nf2, int nf3, int M,
 	int *d_idxnupts = NULL;
 	int *d_subprobstartpts = d_plan->subprobstartpts;
 	int *d_subprob_to_bin = NULL;
+
+	// Synchronize device before we start. This is essential! Otherwise the
+	// next kernel could read the wrong (kx, ky, kz) values.
+	checkCudaErrors(cudaDeviceSynchronize());
 
 	cudaEventRecord(start);
 	checkCudaErrors(cudaMemset(d_binsize,0,numbins[0]*numbins[1]*numbins[2]*
@@ -948,6 +956,10 @@ int CUSPREAD3D_SUBPROB_PROP(int nf1, int nf2, int nf3, int M,
 	int *d_subprob_to_bin = NULL;
 	void *d_temp_storage = NULL;
 	int pirange = d_plan->spopts.pirange;
+
+	// Synchronize device before we start. This is essential! Otherwise the
+	// next kernel could read the wrong (kx, ky, kz) values.
+	checkCudaErrors(cudaDeviceSynchronize());
 
 	cudaEventRecord(start);
 	checkCudaErrors(cudaMemset(d_binsize,0,numbins[0]*numbins[1]*numbins[2]*
