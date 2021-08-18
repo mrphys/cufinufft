@@ -249,8 +249,13 @@ This performs:
 
 				//cufftCreate(&fftplan);
 				//cufftPlan2d(&fftplan,n[0],n[1],CUFFT_TYPE);
-				cufftPlanMany(&fftplan,dim,n,inembed,1,inembed[0]*inembed[1],
+				cufftResult result = cufftPlanMany(
+					&fftplan,dim,n,inembed,1,inembed[0]*inembed[1],
 					inembed,1,inembed[0]*inembed[1],CUFFT_TYPE,maxbatchsize);
+				if (result != CUFFT_SUCCESS) {
+					fprintf(stderr,"[%s] cufftPlanMany failed with error code: %d\n",__func__,result);
+					return ERR_CUFFT;
+				}
 			}
 			break;
 			case 3:
@@ -259,9 +264,14 @@ This performs:
 				int n[] = {nf3, nf2, nf1};
 				int inembed[] = {nf3, nf2, nf1};
 				int istride = 1;
-				cufftPlanMany(&fftplan,dim,n,inembed,istride,inembed[0]*inembed[1]*
+				cufftResult result = cufftPlanMany(
+					&fftplan,dim,n,inembed,istride,inembed[0]*inembed[1]*
 					inembed[2],inembed,istride,inembed[0]*inembed[1]*inembed[2],
 					CUFFT_TYPE,maxbatchsize);
+				if (result != CUFFT_SUCCESS) {
+					fprintf(stderr,"[%s] cufftPlanMany failed with error code: %d\n",__func__,result);
+    				return ERR_CUFFT;
+				}
 			}
 			break;
 		}

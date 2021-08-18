@@ -73,7 +73,12 @@ int CUFINUFFT3D1_EXEC(CUCPX* d_c, CUCPX* d_fk, CUFINUFFT_PLAN d_plan)
 #endif
 		// Step 2: FFT
 		cudaEventRecord(start);
-		CUFFT_EX(d_plan->fftplan, d_plan->fw, d_plan->fw, d_plan->iflag);
+		cufftResult result = CUFFT_EX(
+			d_plan->fftplan, d_plan->fw, d_plan->fw, d_plan->iflag);
+		if (result != CUFFT_SUCCESS) {
+			fprintf(stderr,"[%s] CUFFT_EX failed with error code: %d\n",__func__,result);
+    		return ERR_CUFFT;
+		}
 #ifdef TIME
 		cudaEventRecord(stop);
 		cudaEventSynchronize(stop);
@@ -139,7 +144,12 @@ int CUFINUFFT3D2_EXEC(CUCPX* d_c, CUCPX* d_fk, CUFINUFFT_PLAN d_plan)
 		// Step 2: FFT
 		cudaEventRecord(start);
 		cudaDeviceSynchronize();
-		CUFFT_EX(d_plan->fftplan, d_plan->fw, d_plan->fw, d_plan->iflag);
+		cufftResult result = CUFFT_EX(
+			d_plan->fftplan, d_plan->fw, d_plan->fw, d_plan->iflag);
+		if (result != CUFFT_SUCCESS) {
+			fprintf(stderr,"[%s] CUFFT_EX failed with error code: %d\n",__func__,result);
+    		return ERR_CUFFT;
+		}
 #ifdef TIME
 		cudaEventRecord(stop);
 		cudaEventSynchronize(stop);

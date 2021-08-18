@@ -36,6 +36,7 @@ typedef complex<double> dcomplex;  // slightly sneaky since duplicated by mwrap
 #define ERR_NDATA_NOTVALID       9
 #define ERR_GRIDSIZE_NOTVALID    100
 #define ERR_NOTIMPLEMENTED       101
+#define ERR_CUFFT                102
 
 
 //#define MAX(a,b) (a>b) ? a : b  // but we use std::max instead
